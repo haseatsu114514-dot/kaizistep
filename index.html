@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>⚪︎⚪︎開示ステップメーカー</title>
-  <meta name="description" content="10秒動画にテロップを入れて保存・共有できるメーカー。">
+  <meta name="description" content="10.6秒動画にテロップを入れて保存できるメーカー。">
   <style>
     :root {
       --bg: #eef1ee;
@@ -414,7 +414,7 @@
     }
 
     details[open] .fold-label::before {
-      content: "閉じる";
+      content: "縮小";
     }
 
     details:not([open]) .fold-label::before {
@@ -566,7 +566,7 @@
   <main class="app-shell">
     <header class="topbar">
       <h1>⚪︎⚪︎開示ステップメーカー</h1>
-      <span class="clip-badge">0:00-0:10.5</span>
+      <span class="clip-badge">0:00-0:10.6</span>
     </header>
 
     <div class="orientation-tip">スマホでは横画面にして使ってください。<br>横向きにすると編集画面が開きます。</div>
@@ -584,9 +584,9 @@
             <div id="finalCaptionLayer" class="final-caption-layer" aria-hidden="true"></div>
           </div>
           <div class="preview-meta">
-            <span id="timeText">0.0 / 10.5秒</span>
+            <span id="timeText">0.0 / 10.6秒</span>
             <div class="meter" aria-hidden="true"><span id="progressBar"></span></div>
-            <span id="activeText">Step 1: 0.0-4.0秒</span>
+            <span id="activeText">1人目: 0.0-2.1秒</span>
           </div>
           <div id="stepStrip" class="step-strip" aria-label="表示ステップ"></div>
         </div>
@@ -598,14 +598,6 @@
         </div>
         <div class="panel-body controls">
           <div class="field">
-            <label for="fontSize">文字サイズ</label>
-            <div class="range-line">
-              <input id="fontSize" type="range" min="28" max="96" step="1" value="54">
-              <span id="fontSizeValue" class="value-pill">54</span>
-            </div>
-          </div>
-
-          <div class="field">
             <label>通常テロップ（固定時間）</label>
             <div id="stepsList" class="steps-list"></div>
           </div>
@@ -616,8 +608,7 @@
           </div>
 
           <div class="action-grid">
-            <button id="renderBtn" class="primary-button" type="button">動画を書き出す</button>
-            <button id="downloadBtn" class="warm-button" type="button" disabled>ダウンロード（カメラロール保存用）</button>
+            <button id="downloadBtn" class="primary-button" type="button">カメラロール保存</button>
           </div>
           <p id="statusText" class="status"></p>
         </div>
@@ -626,11 +617,12 @@
   </main>
 
   <script>
-    const MAX_SECONDS = 10.5;
+    const MAX_SECONDS = 10.6;
     const MIN_STEP_SECONDS = 0.5;
     const FINAL_LAYOUT_START = 7.4;
+    const CAPTION_FONT_SIZE = 50;
     const DEFAULT_VIDEO_SRC = "assets/koukai-step-source.mp4";
-    const STORAGE_KEY = "koukai-step-maker-settings-v4";
+    const STORAGE_KEY = "koukai-step-maker-settings-v5";
     const SEGMENT_COLORS = ["#78c6a3", "#8cc7ff", "#f2a0bd", "#8cc7ff", "#78c6a3", "#f4b63f"];
     const DEFAULT_STEPS = [
       { text: "1人目(緑♀)", start: 0, end: 2.1 },
@@ -641,7 +633,7 @@
     ];
     const DEFAULT_FINAL_CAPTIONS = [
       { text: "(こいつやば)", x: 23, y: 36, width: 35 },
-      { text: "(そういう子\n吐かせがいがあるよね)", x: 16, y: 55, width: 38 },
+      { text: "（〜いいよね）", x: 16, y: 55, width: 38 },
       { text: "(なんか一人\nとんでもない奴いたな？)", x: 37, y: 69, width: 45 },
       { text: "(何だ今の？)", x: 60, y: 77, width: 30 },
       { text: "(なんかいたな…)", x: 77, y: 87, width: 34 }
@@ -651,13 +643,10 @@
     const previewStage = document.getElementById("previewStage");
     const captionPreview = document.getElementById("captionPreview");
     const finalCaptionLayer = document.getElementById("finalCaptionLayer");
-    const fontSize = document.getElementById("fontSize");
-    const fontSizeValue = document.getElementById("fontSizeValue");
     const playFromStartBtn = document.getElementById("playFromStartBtn");
     const stepsList = document.getElementById("stepsList");
     const finalCaptionsList = document.getElementById("finalCaptionsList");
     const stepStrip = document.getElementById("stepStrip");
-    const renderBtn = document.getElementById("renderBtn");
     const downloadBtn = document.getElementById("downloadBtn");
     const statusText = document.getElementById("statusText");
     const timeText = document.getElementById("timeText");
@@ -670,6 +659,7 @@
       generatedBlob: null,
       generatedUrl: "",
       generatedFile: null,
+      generatedSignature: "",
       outputExt: "webm",
       steps: DEFAULT_STEPS.map((step) => ({ ...step })),
       finalCaptions: DEFAULT_FINAL_CAPTIONS.map((caption) => ({ ...caption }))
@@ -683,17 +673,8 @@
     updateAll();
 
     function bindEvents() {
-      [fontSize].forEach((control) => {
-        control.addEventListener("input", () => {
-          clearGeneratedOutput();
-          updateAll();
-          saveSettings();
-        });
-      });
-
       playFromStartBtn.addEventListener("click", playPreviewFromStart);
-      renderBtn.addEventListener("click", renderCaptionedVideo);
-      downloadBtn.addEventListener("click", downloadGeneratedVideo);
+      downloadBtn.addEventListener("click", handleCameraRollSaveClick);
 
       stepsList.addEventListener("input", handleStepInput);
       stepsList.addEventListener("change", handleStepInput);
@@ -717,7 +698,7 @@
 
     function getStyleSettings() {
       return {
-        fontSize: Number(fontSize.value) || 54
+        fontSize: CAPTION_FONT_SIZE
       };
     }
 
@@ -737,7 +718,6 @@
 
     function updateAll() {
       const settings = getStyleSettings();
-      fontSizeValue.textContent = String(settings.fontSize);
       applyPreviewStyle(settings);
       renderFinalCaptionLayer();
       renderStepStrip();
@@ -756,7 +736,7 @@
         card.innerHTML = `
           <summary class="step-head">
             <div class="step-title">
-              <strong>Step ${index + 1}</strong>
+              <strong>${getPersonLabel(index)}</strong>
               <span>${step.start.toFixed(1)}秒から ${step.end.toFixed(1)}秒まで</span>
             </div>
             <span class="fold-label" aria-hidden="true"></span>
@@ -820,7 +800,7 @@
         segment.style.left = ((step.start / MAX_SECONDS) * 100) + "%";
         segment.style.width = ((step.duration / MAX_SECONDS) * 100) + "%";
         segment.style.setProperty("--segment-color", SEGMENT_COLORS[step.index % SEGMENT_COLORS.length]);
-        segment.textContent = "Step " + (step.index + 1) + "  " + step.start.toFixed(1) + "-" + step.end.toFixed(1);
+        segment.textContent = getPersonLabel(step.index) + "  " + step.start.toFixed(1) + "-" + step.end.toFixed(1);
         segment.classList.toggle("is-active", Boolean(active && active.index === step.index));
         stepStrip.appendChild(segment);
       });
@@ -850,6 +830,7 @@
       }
 
       clearGeneratedOutput();
+      setStatus("編集内容を反映しました。カメラロール保存を押すと準備します。", "");
 
       if (field === "text") {
         state.steps[index].text = event.target.value;
@@ -870,6 +851,7 @@
       }
 
       clearGeneratedOutput();
+      setStatus("編集内容を反映しました。カメラロール保存を押すと準備します。", "");
       state.finalCaptions[index].text = event.target.value;
       renderFinalCaptionLayer();
       updatePreviewTiming();
@@ -944,7 +926,7 @@
         finalCaptionLayer.classList.remove("is-visible");
         captionPreview.textContent = active.text;
         captionPreview.classList.add("is-visible");
-        activeText.textContent = "Step " + (active.index + 1) + ": " + active.start.toFixed(1) + "-" + active.end.toFixed(1) + "秒";
+        activeText.textContent = getPersonLabel(active.index) + ": " + active.start.toFixed(1) + "-" + active.end.toFixed(1) + "秒";
       } else {
         finalCaptionLayer.classList.remove("is-visible");
         captionPreview.textContent = "";
@@ -969,6 +951,10 @@
       }
     }
 
+    function getPersonLabel(index) {
+      return (index + 1) + "人目";
+    }
+
     async function playPreviewFromStart() {
       previewVideo.currentTime = 0;
       try {
@@ -978,16 +964,34 @@
       }
     }
 
-    async function renderCaptionedVideo() {
-      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
-        setStatus("このブラウザは動画の書き出しに対応していません。ChromeかSafariで開いてください。", "error");
+    async function handleCameraRollSaveClick() {
+      if (hasCurrentGeneratedVideo()) {
+        await openCameraRollSaveMenu();
         return;
       }
 
-      renderBtn.disabled = true;
+      await renderCaptionedVideo();
+    }
+
+    function hasCurrentGeneratedVideo() {
+      return Boolean(
+        state.generatedBlob &&
+        state.generatedFile &&
+        state.generatedSignature === buildRenderSignature()
+      );
+    }
+
+    async function renderCaptionedVideo() {
+      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+        setStatus("このブラウザは動画の保存準備に対応していません。ChromeかSafariの最新版で開いてください。", "error");
+        return;
+      }
+
+      const renderSignature = buildRenderSignature();
       downloadBtn.disabled = true;
-      clearGeneratedOutput(false);
-      setStatus("書き出し中です。画面を閉じずにお待ちください。", "");
+      downloadBtn.textContent = "保存準備中";
+      clearGeneratedOutput();
+      setStatus("保存準備中です。画面を閉じずにお待ちください。", "");
 
       try {
         const settings = getStyleSettings();
@@ -1047,12 +1051,13 @@
         state.generatedBlob = blob;
         state.generatedFile = new File([blob], filename, { type: blobType });
         state.generatedUrl = URL.createObjectURL(blob);
-        downloadBtn.disabled = false;
-        setStatus("書き出し完了: " + ext.toUpperCase() + "形式で保存できます。", "ok");
+        state.generatedSignature = renderSignature;
+        setStatus("保存準備ができました。もう一度「カメラロール保存」を押してください。", "ok");
       } catch (error) {
-        setStatus("書き出しに失敗しました: " + error.message, "error");
+        setStatus("保存準備に失敗しました: " + error.message, "error");
       } finally {
-        renderBtn.disabled = false;
+        downloadBtn.disabled = false;
+        downloadBtn.textContent = "カメラロール保存";
       }
     }
 
@@ -1227,48 +1232,70 @@
       ].join(", ");
     }
 
-    async function downloadGeneratedVideo() {
+    async function openCameraRollSaveMenu() {
       if (!state.generatedBlob || !state.generatedFile) {
+        setStatus("保存準備がまだできていません。もう一度押して準備してください。", "error");
+        return;
+      }
+
+      const shareData = {
+        title: "⚪︎⚪︎開示ステップメーカー",
+        files: [state.generatedFile]
+      };
+
+      if (!window.isSecureContext || !navigator.share || !navigator.canShare || !navigator.canShare({ files: shareData.files })) {
+        setStatus("この端末ではカメラロール保存メニューを開けません。通常ダウンロードは行いません。", "error");
         return;
       }
 
       try {
-        if (navigator.canShare && navigator.canShare({ files: [state.generatedFile] }) && navigator.share) {
-          await navigator.share({
-            title: "⚪︎⚪︎開示ステップメーカー",
-            files: [state.generatedFile]
-          });
-          setStatus("保存メニューを開きました。スマホでは「ビデオを保存」を選んでください。", "ok");
+        await navigator.share(shareData);
+        setStatus("保存メニューが完了しました。カメラロール以外の保存先はWeb側では判定できません。", "ok");
+      } catch (error) {
+        if (error.name === "AbortError") {
+          setStatus("保存をキャンセルしました。必要ならもう一度押してください。", "error");
           return;
         }
-      } catch (error) {
-        setStatus("保存メニューを閉じました。", "");
-        return;
+        if (error.name === "NotAllowedError") {
+          setStatus("この端末またはブラウザではカメラロール保存メニューが許可されていません。", "error");
+          return;
+        }
+        setStatus("保存メニューを開けませんでした: " + error.message, "error");
       }
-
-      const link = document.createElement("a");
-      link.href = state.generatedUrl;
-      link.download = state.generatedFile.name;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setStatus("保存しました。", "ok");
     }
 
     function clearGeneratedOutput(revoke = true) {
       state.generatedBlob = null;
       state.generatedFile = null;
+      state.generatedSignature = "";
       if (revoke && state.generatedUrl) {
         URL.revokeObjectURL(state.generatedUrl);
       }
       state.generatedUrl = "";
-      downloadBtn.disabled = true;
     }
 
     function setStatus(message, type) {
       statusText.textContent = message;
       statusText.classList.toggle("is-ok", type === "ok");
       statusText.classList.toggle("is-error", type === "error");
+    }
+
+    function buildRenderSignature() {
+      return JSON.stringify({
+        maxSeconds: MAX_SECONDS,
+        fontSize: CAPTION_FONT_SIZE,
+        steps: getTimelineSteps().map((step) => ({
+          text: step.text,
+          start: step.start,
+          end: step.end
+        })),
+        finalCaptions: state.finalCaptions.map((caption) => ({
+          text: caption.text,
+          x: caption.x,
+          y: caption.y,
+          width: caption.width
+        }))
+      });
     }
 
     function waitForEvent(target, eventName) {
@@ -1308,9 +1335,7 @@
     }
 
     function saveSettings() {
-      const settings = getStyleSettings();
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        fontSize: settings.fontSize,
         steps: state.steps,
         finalCaptions: state.finalCaptions.map((caption) => ({ text: caption.text }))
       }));
@@ -1319,9 +1344,6 @@
     function loadSettings() {
       try {
         const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-        if (typeof saved.fontSize === "number") {
-          fontSize.value = String(clamp(saved.fontSize, 28, 96));
-        }
         if (Array.isArray(saved.steps) && saved.steps.length) {
           state.steps = saved.steps.map((step) => ({
             text: typeof step.text === "string" ? step.text : "",
