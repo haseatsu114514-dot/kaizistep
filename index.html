@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>⚪︎⚪︎開示ステップメーカー</title>
   <meta name="description" content="10.6秒動画にテロップを入れて保存できるメーカー。">
+  <meta name="theme-color" content="#0f1115">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="開示ステップ">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.webmanifest">
   <style>
     :root {
       --bg: #eef1ee;
@@ -595,7 +601,7 @@
 
       .workspace {
         height: 100%;
-        grid-template-columns: minmax(220px, 42vw) minmax(280px, 1fr);
+        grid-template-columns: minmax(260px, 46vw) minmax(260px, 1fr);
         gap: 8px;
         align-items: stretch;
       }
@@ -621,18 +627,23 @@
         align-self: start;
       }
 
+      .preview-panel .panel-header {
+        display: none;
+      }
+
       .preview-panel .panel-body {
         display: grid;
-        grid-template-rows: auto auto auto;
-        gap: 6px;
+        place-items: center;
+        height: 100%;
+        padding: 4px;
         overflow: hidden;
       }
 
       .preview-stage {
-        width: min(100%, 282px);
-        width: min(100%, calc(54dvh * 73 / 60));
-        max-height: 54vh;
-        max-height: 54dvh;
+        width: min(100%, calc((100vh - 24px) * 73 / 60));
+        width: min(100%, calc((100dvh - 24px) * 73 / 60));
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
         margin: 0 auto;
       }
 
@@ -645,25 +656,9 @@
         -webkit-text-stroke: 1px #050608;
       }
 
-      .preview-meta {
-        gap: 5px;
-        margin-top: 0;
-        font-size: 0.72rem;
-      }
-
-      .meter {
-        flex: 1 1 90px;
-        height: 7px;
-      }
-
+      .preview-meta,
       .step-strip {
-        height: 30px;
-        margin-top: 0;
-      }
-
-      .strip-segment {
-        padding: 4px 5px;
-        font-size: 0.62rem;
+        display: none;
       }
 
       .workspace > .panel:not(.preview-panel) {

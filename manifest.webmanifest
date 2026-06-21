@@ -1,0 +1,10 @@
+{
+  "name": "⚪︎⚪︎開示ステップメーカー",
+  "short_name": "開示ステップ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#eef1ee",
+  "theme_color": "#0f1115"
+}
